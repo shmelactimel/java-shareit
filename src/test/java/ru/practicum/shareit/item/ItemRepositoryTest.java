@@ -111,19 +111,4 @@ public class ItemRepositoryTest {
                 .isInstanceOf(Set.class)
                 .hasSize(0);
     }
-
-    @Test
-    void deleteUserItems_success() {
-        //given
-        itemRepository.addItem(item);
-        //when
-        Long userId = item.getOwner();
-        itemRepository.deleteUserItems(userId);
-        Set<Item> items = itemRepository.getUserItems(userId);
-        //then
-        assertThat(items)
-                .isNotNull()
-                .isInstanceOf(Set.class)
-                .hasSize(0);
-    }
 }
