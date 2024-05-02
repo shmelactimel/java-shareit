@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 @Repository
 public class ItemRepositoryInMemory implements ItemRepository {
     private final Map<Long, Item> storage = new HashMap<>();
+    private final Map<Long, Set<Long>> userItemsMap = new HashMap<>();
     private Long counter = 1L;
 
     @Override
@@ -18,6 +19,7 @@ public class ItemRepositoryInMemory implements ItemRepository {
             counter++;
         }
         storage.put(item.getId(), item);
+        userItemsMap.computeIfAbsent(item.getOwner(), k -> new HashSet<>()).add(item.getId());
         return item;
     }
 
@@ -28,16 +30,17 @@ public class ItemRepositoryInMemory implements ItemRepository {
 
     @Override
     public Item getItem(Long id) {
-        Item item = storage.get(id);
-        return item;
+        return storage.get(id);
     }
 
     @Override
     public Set<Item> getUserItems(Long userId) {
-        Set<Item> itemIds = storage.values().stream()
-                .filter(x -> x.getOwner().equals(userId))
+        Set<Long> itemIds = userItemsMap.getOrDefault(userId, Collections.emptySet());
+        Set<Item> userItems = itemIds.stream()
+                .map(storage::get)
                 .collect(Collectors.toSet());
-        return itemIds;
+
+        return userItems;
     }
 
     @Override
@@ -56,5 +59,10 @@ public class ItemRepositoryInMemory implements ItemRepository {
                 .filter(x -> x.getOwner().equals(userId))
                 .collect(Collectors.toList()));
         items.stream().forEach(x -> storage.remove(x.getId()));
+    }
+
+    @Override
+    public boolean doesItemExist(Long itemId) {
+        return storage.containsKey(itemId);
     }
 }

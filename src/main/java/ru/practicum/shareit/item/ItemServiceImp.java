@@ -22,14 +22,14 @@ public class ItemServiceImp implements ItemService {
     private final BookingRepository bookingRepository;
 
     @Override
-    public Optional<ItemDto> addItem(Long userId, ItemDto itemDto) {
-        User user = userRepository.getUser(userId);;
+    public ItemDto addItem(Long userId, ItemDto itemDto) {
+        User user = userRepository.getUser(userId);
         if (user == null) {
-            return Optional.empty();
+            return null;
         }
         Item item = ItemMapper.toItem(userId, itemDto);
-        ItemDto newItemDto = ItemMapper.toItemDto(itemRepository.addItem(item));
-        return Optional.of(newItemDto);
+        Item newItem = itemRepository.addItem(item);
+        return ItemMapper.toItemDto(newItem);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class ItemServiceImp implements ItemService {
     }
 
     @Override
-    public ItemDto getItem(Long userId, Long itemId) {
+    public ItemDto getItem(Long itemId) {
         Item item = itemRepository.getItem(itemId);
         if (item == null) {
             throw new EntityNotFoundException(String.format("item id %d not found", itemId));

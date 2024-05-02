@@ -15,4 +15,6 @@ public interface UserRepository {
     void updateUser(User updatedUser);
 
     void deleteUser(Long id);
+
+    boolean doesUserExist(Long userId);
 }

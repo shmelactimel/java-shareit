@@ -26,13 +26,12 @@ public class UserController {
     }
 
     @PostMapping(value = {"","/{userId}"})
-    public UserDto addUser(@PathVariable(required = false) Long userId, @Valid @RequestBody UserDto userDto)
-            throws EntityAlreadyExistException {
+    public UserDto addUser(@PathVariable(required = false) Long userId, @Valid @RequestBody UserDto userDto) {
         return userService.addUser(userId, userDto);
     }
 
     @PatchMapping("/{userId}")
-    public UserDto updateUser(@PathVariable Long userId,@RequestBody UserDto userDto) throws EntityAlreadyExistException {
+    public UserDto updateUser(@PathVariable Long userId,@RequestBody UserDto userDto) {
         return userService.updateUser(userId, userDto);
     }
 

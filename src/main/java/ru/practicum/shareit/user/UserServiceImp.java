@@ -10,11 +10,14 @@ import ru.practicum.shareit.user.dto.UserDto;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImp implements UserService {
     private final UserRepository userRepository;
+    private final Set<String> userEmails = new HashSet<>();
 
     @Override
     public UserDto getUser(Long id) {
@@ -33,11 +36,15 @@ public class UserServiceImp implements UserService {
 
     @Override
     public UserDto addUser(Long userId, UserDto userDto) throws EntityAlreadyExistException {
-        validateEmail(userDto.getEmail());
+        String email = userDto.getEmail();
+        if (userEmails.contains(email)) {
+            throw new EntityAlreadyExistException(String.format("User with email %s already exists", email));
+        }
         User user = UserMapper.toUser(userDto);
+        userEmails.add(email);
         Optional<User> createdUser = userRepository.addUser(userId, user);
         if (createdUser.isEmpty()) {
-            throw new EntityAlreadyExistException(String.format("user with id %d already exists", userId));
+            throw new EntityAlreadyExistException(String.format("User with id %d already exists", userId));
         }
         return UserMapper.toUserDto(createdUser.get());
     }
@@ -46,28 +53,28 @@ public class UserServiceImp implements UserService {
     public UserDto updateUser(Long id, UserDto userDto) throws EntityAlreadyExistException {
         User oldUser = userRepository.getUser(id);
         if (oldUser == null) {
-            throw new EntityNotFoundException(String.format("user %d do not exists", id));
+            throw new EntityNotFoundException(String.format("User with id %d does not exist", id));
         }
         User user = UserMapper.toUser(userDto);
-        User updatedUser = UserMapper.updateUserWithUser(oldUser, user);
-        if (!oldUser.getEmail().equals(updatedUser.getEmail())) {
-            validateEmail(updatedUser.getEmail());
+        String newEmail = user.getEmail();
+        if (!oldUser.getEmail().equals(newEmail)) {
+            if (userEmails.contains(newEmail)) {
+                throw new EntityAlreadyExistException(String.format("User with email %s already exists", newEmail));
+            }
+            userEmails.remove(oldUser.getEmail());
+            userEmails.add(newEmail);
         }
+        User updatedUser = UserMapper.updateUserWithUser(oldUser, user);
         userRepository.updateUser(updatedUser);
         return UserMapper.toUserDto(updatedUser);
     }
 
     @Override
     public void deleteUser(Long id) {
-        userRepository.deleteUser(id);
-    }
-
-    private void validateEmail(String email) throws EntityAlreadyExistException {
-        userRepository.getUsers().stream()
-                .forEach(x -> {
-                    if (x.getEmail().equals(email)) {
-                        throw new EntityAlreadyExistException(String.format("User with email %s already exists", email));
-                    }
-                });
+        User user = userRepository.getUser(id);
+        if (user != null) {
+            userEmails.remove(user.getEmail());
+            userRepository.deleteUser(id);
+        }
     }
 }

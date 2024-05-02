@@ -10,6 +10,7 @@ import ru.practicum.shareit.item.dto.ItemDto;
 import javax.validation.Valid;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Collections;
 
 @Slf4j
 @RestController
@@ -21,12 +22,12 @@ public class ItemController {
     @PostMapping
     public ItemDto addItem(@RequestHeader("X-Sharer-User-Id") Long userId,
                            @Valid @RequestBody ItemDto itemDto) {
-        log.info(String.format("add item for user %d", userId));
-        Optional<ItemDto> addedItem = itemService.addItem(userId, itemDto);
-        if (addedItem.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user id %d does not exist");
+        log.info("add item for user {}", userId);
+        ItemDto addedItem = itemService.addItem(userId, itemDto);
+        if (addedItem == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User with id " + userId + " does not exist");
         }
-        return addedItem.get();
+        return addedItem;
     }
 
     @PatchMapping("/{itemId}")
@@ -42,10 +43,9 @@ public class ItemController {
     }
 
     @GetMapping("/{itemId}")
-    public ItemDto getItem(@RequestHeader("X-Sharer-User-Id") Long userId,
-                           @PathVariable Long itemId) {
-        log.info(String.format("get item id %d", itemId));
-        return itemService.getItem(userId, itemId);
+    public ItemDto getItem(@RequestHeader("X-Sharer-User-Id") @PathVariable Long itemId) {
+        log.info("get item id {}", itemId);
+        return itemService.getItem(itemId);
     }
 
     @GetMapping
@@ -55,15 +55,19 @@ public class ItemController {
     }
 
     @GetMapping("/search")
-    public Set<ItemDto> searchForAnItem(@RequestParam String text) {
-        log.info(String.format("get user items", text));
+    public Set<ItemDto> searchForAnItem(@RequestParam(required = false) String text) {
+        if (text == null || text.isBlank()) {
+            // Если параметр text не указан или пуст, вернуть пустой набор элементов
+            return Collections.emptySet();
+        }
+        log.info("get user items {}", text);
         return itemService.searchItem(text);
     }
 
     @DeleteMapping("/{itemId}")
     public void deleteItem(@RequestHeader("X-Sharer-User-Id") Long userId,
                            @PathVariable Long itemId) {
-        log.info(String.format("delete item id %d", itemId));
+        log.info("delete item id {}", itemId);
         itemService.deleteItem(itemId);
     }
 }

@@ -9,12 +9,12 @@ import java.util.stream.Collectors;
 @Repository
 public class UserRepositoryInMemory implements UserRepository {
     private final Map<Long, User> storage = new HashMap<>();
+    private final Set<String> userEmails = new HashSet<>();
     private Long counter = 1L;
 
     @Override
     public User getUser(Long id) {
-        User user = storage.get(id);
-        return user;
+        return storage.get(id);
     }
 
     @Override
@@ -34,6 +34,7 @@ public class UserRepositoryInMemory implements UserRepository {
             counter++;
         }
         storage.put(user.getId(), user);
+        userEmails.add(user.getEmail());
         return Optional.of(user);
     }
 
@@ -45,5 +46,10 @@ public class UserRepositoryInMemory implements UserRepository {
     @Override
     public void deleteUser(Long id) {
         storage.remove(id);
+    }
+
+    @Override
+    public boolean doesUserExist(Long userId) {
+        return storage.containsKey(userId);
     }
 }

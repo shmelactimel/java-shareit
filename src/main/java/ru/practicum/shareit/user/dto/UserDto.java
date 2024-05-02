@@ -4,13 +4,15 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import ru.practicum.shareit.util.CustomEmailValidator;
+import javax.validation.constraints.NotBlank;
 
 @Data
 @Builder
 @AllArgsConstructor
 public class UserDto {
-    Long id;
-    String name;
+    private Long id;
+    @NotBlank(message = "Name must not be empty")
+    private String name;
     @CustomEmailValidator
-    String email;
+    private String email;
 }
