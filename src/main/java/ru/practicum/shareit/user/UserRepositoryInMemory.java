@@ -14,7 +14,11 @@ public class UserRepositoryInMemory implements UserRepository {
 
     @Override
     public User getUser(Long id) {
-        return storage.get(id);
+        User user = storage.get(id);
+        if (user == null) {
+            return null;
+        }
+        return user;
     }
 
     @Override
@@ -49,7 +53,9 @@ public class UserRepositoryInMemory implements UserRepository {
     }
 
     @Override
-    public boolean doesUserExist(Long userId) {
-        return storage.containsKey(userId);
+    public Optional<User> getUserByEmail(String email) {
+        return storage.values().stream()
+                .filter(user -> user.getEmail().equals(email))
+                .findFirst();
     }
 }

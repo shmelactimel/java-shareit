@@ -24,9 +24,9 @@ public class UserController {
         return userService.getUsers();
     }
 
-    @PostMapping(value = {"","/{userId}"})
-    public UserDto addUser(@PathVariable(required = false) Long userId, @Valid @RequestBody UserDto userDto) {
-        return userService.addUser(userId, userDto);
+    @PostMapping
+    public UserDto addUser(@Valid @RequestBody UserDto userDto) {
+        return userService.addUser(null, userDto);
     }
 
     @PatchMapping("/{userId}")

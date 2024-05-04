@@ -18,6 +18,4 @@ public interface ItemRepository {
     void deleteItem(Item item);
 
     void deleteUserItems(Long userId);
-
-    boolean doesItemExist(Long itemId);
 }

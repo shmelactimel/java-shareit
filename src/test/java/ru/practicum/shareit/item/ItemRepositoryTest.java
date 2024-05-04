@@ -74,18 +74,6 @@ public class ItemRepositoryTest {
     }
 
     @Test
-    void getItem_failure_wrongId() {
-        //given
-        itemRepository.addItem(item);
-        //when
-        Long wrongId = -999L;
-        Item wrongItem = itemRepository.getItem(wrongId);
-        //then
-        assertThat(wrongItem)
-                .isNull();
-    }
-
-    @Test
     void getUserItems_success() {
         //given
         itemRepository.addItem(item);

@@ -56,9 +56,6 @@ public class ItemServiceImp implements ItemService {
     @Override
     public ItemDto getItem(Long itemId) {
         Item item = itemRepository.getItem(itemId);
-        if (item == null) {
-            throw new EntityNotFoundException(String.format("item id %d not found", itemId));
-        }
         return ItemMapper.toItemDto(item);
     }
 

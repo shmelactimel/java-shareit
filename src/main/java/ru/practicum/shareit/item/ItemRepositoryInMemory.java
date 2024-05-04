@@ -2,6 +2,7 @@ package ru.practicum.shareit.item;
 
 import org.springframework.stereotype.Repository;
 import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.error.EntityNotFoundException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,7 +31,11 @@ public class ItemRepositoryInMemory implements ItemRepository {
 
     @Override
     public Item getItem(Long id) {
-        return storage.get(id);
+        Item item = storage.get(id);
+        if (item == null) {
+            throw new EntityNotFoundException("Item with id " + id + " not found");
+        }
+        return item;
     }
 
     @Override
@@ -59,10 +64,5 @@ public class ItemRepositoryInMemory implements ItemRepository {
                 .filter(x -> x.getOwner().equals(userId))
                 .collect(Collectors.toList()));
         items.stream().forEach(x -> storage.remove(x.getId()));
-    }
-
-    @Override
-    public boolean doesItemExist(Long itemId) {
-        return storage.containsKey(itemId);
     }
 }
