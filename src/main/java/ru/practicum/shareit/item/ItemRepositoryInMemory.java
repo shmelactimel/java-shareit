@@ -40,12 +40,9 @@ public class ItemRepositoryInMemory implements ItemRepository {
 
     @Override
     public Set<Item> getUserItems(Long userId) {
-        Set<Long> itemIds = userItemsMap.getOrDefault(userId, Collections.emptySet());
-        Set<Item> userItems = itemIds.stream()
+        return userItemsMap.getOrDefault(userId, Collections.emptySet()).stream()
                 .map(storage::get)
                 .collect(Collectors.toSet());
-
-        return userItems;
     }
 
     @Override

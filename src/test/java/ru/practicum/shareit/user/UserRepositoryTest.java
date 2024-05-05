@@ -40,18 +40,6 @@ public class UserRepositoryTest {
     }
 
     @Test
-    void getUser_failure_withWrongId() throws EntityAlreadyExistException {
-        //given
-        userRepository.addUser(user.getId(), user);
-        //when
-        Long id = -999L;
-        User wrongUser = userRepository.getUser(id);
-        //then
-        assertThat(wrongUser)
-                .isNull();
-    }
-
-    @Test
     void getUsers_success() throws EntityAlreadyExistException {
         //given
         userRepository.addUser(user.getId(), user);

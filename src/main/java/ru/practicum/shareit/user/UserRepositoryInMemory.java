@@ -2,6 +2,7 @@ package ru.practicum.shareit.user;
 
 import org.springframework.stereotype.Repository;
 import ru.practicum.shareit.user.model.User;
+import ru.practicum.shareit.error.EntityNotFoundException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,7 +17,7 @@ public class UserRepositoryInMemory implements UserRepository {
     public User getUser(Long id) {
         User user = storage.get(id);
         if (user == null) {
-            return null;
+            throw new EntityNotFoundException("User with id " + id + " not found");
         }
         return user;
     }
@@ -54,8 +55,11 @@ public class UserRepositoryInMemory implements UserRepository {
 
     @Override
     public Optional<User> getUserByEmail(String email) {
-        return storage.values().stream()
-                .filter(user -> user.getEmail().equals(email))
-                .findFirst();
+        for (User user : storage.values()) {
+            if (user.getEmail().equals(email)) {
+                return Optional.of(user);
+            }
+        }
+        return Optional.empty();
     }
 }
