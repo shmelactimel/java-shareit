@@ -1,25 +1,41 @@
 package ru.practicum.shareit.booking.model;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import ru.practicum.shareit.booking.enums.BookingStatus;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.model.User;
 
-import javax.validation.constraints.NotNull;
-import java.time.LocalDate;
+import javax.persistence.*;
+import java.time.LocalDateTime;
 
-@Data
-@Builder
+@Entity
+@Getter
+@Setter
+@Table(name = "booking")
+@NamedEntityGraph(name = "booking-graph", attributeNodes = {
+        @NamedAttributeNode("item"),
+        @NamedAttributeNode("booker")})
 public class Booking {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @NotNull
-    private LocalDate start;
-    @NotNull
-    private LocalDate end;
-    @NotNull
+
+    @JoinColumn(name = "item_id")
+    @ManyToOne(fetch = FetchType.LAZY)
     private Item item;
-    @NotNull
+
+    @JoinColumn(name = "booker_id")
+    @ManyToOne(fetch = FetchType.LAZY)
     private User booker;
-    @NotNull
-    private Status status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BookingStatus status;
+    @Column(name = "start_booking", nullable = false)
+    private LocalDateTime start;
+    @Column(name = "end_booking", nullable = false)
+    private LocalDateTime end;
+
 }
