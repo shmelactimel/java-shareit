@@ -53,7 +53,7 @@ public class ItemServiceImpl implements ItemService {
         if (!item.getOwner().getId().equals(userId)) {
             return itemMapper.itemsToDtoResponse(item, comments);
         }
-        var bookings = bookingRepository.findBookingsShortByItem(item.getId());
+        var bookings = bookingRepository.findBookingsShortByItemApproved(item.getId());
         var dateTime = LocalDateTime.now();
         var last = bookings.stream()
                 .filter(b -> dateTime.isAfter(b.getStart()))
@@ -70,9 +70,10 @@ public class ItemServiceImpl implements ItemService {
     public List<ItemWithBookingsDto> getAll(long userId) {
         var items = itemRepository.findAllByOwnerIdOrderById(userId);
         var dateTime = LocalDateTime.now();
-        var bookings = bookingRepository.findAllBookingsShortByOwner(userId, Sort.by("start").descending());
+        var bookings = bookingRepository.findAllBookingsShortByOwnerApproved(userId, Sort.by("start").descending());
         Map<Long, BookingShort> lastBookings = new HashMap<>();
         Map<Long, BookingShort> nextBookings = new HashMap<>();
+
         for (var booking: bookings) {
             if (dateTime.isAfter(booking.getStart())) {
                 lastBookings.putIfAbsent(booking.getItemId(), booking);

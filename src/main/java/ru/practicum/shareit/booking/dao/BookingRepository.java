@@ -71,6 +71,22 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<BookingShort> findBookingsShortByItem(long itemId);
 
     @EntityGraph("booking-graph")
-    List<Booking> findByItemIdAndBookerIdAndStatusAndEndBefore(long itemId, long bookerId, BookingStatus status,
-                                                               LocalDateTime dateTime);
+    List<Booking> findByItemIdAndBookerIdAndStatusAndEndBefore(long itemId, long bookerId, BookingStatus status, LocalDateTime dateTime);
+
+    @Query("select b from Booking b " +
+            "where b.item.id = ?1 and b.status = 'APPROVED' and " +
+            "(?2 between b.start and b.end or ?3 between b.start and b.end or " +
+            "(b.start between ?2 and ?3) or (b.end between ?2 and ?3))")
+    List<Booking> findOverlappingBookings(long itemId, LocalDateTime start, LocalDateTime end);
+
+    @Query("SELECT new ru.practicum.shareit.booking.model.BookingShort(b.id, b.item.id, b.booker.id, b.start, b.end) " +
+            "FROM Booking b " +
+            "WHERE b.item.id = ?1 AND b.status = 'APPROVED'")
+    List<BookingShort> findBookingsShortByItemApproved(long itemId);
+
+    @Query("SELECT new ru.practicum.shareit.booking.model.BookingShort(b.id, b.item.id, b.booker.id, b.start, b.end) " +
+            "FROM Booking b " +
+            "WHERE b.item.owner.id = ?1 AND b.status = 'APPROVED' " +
+            "ORDER BY b.start DESC")
+    List<BookingShort> findAllBookingsShortByOwnerApproved(long ownerId, Sort sort);
 }

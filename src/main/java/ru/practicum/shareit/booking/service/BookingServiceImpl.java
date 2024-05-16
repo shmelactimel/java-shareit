@@ -42,6 +42,11 @@ public class BookingServiceImpl implements BookingService {
         if (item.getOwner().getId().equals(userId)) {
             throw new NotFoundException("booker cannot be a owner");
         }
+        List<Booking> overlappingBookings = bookingRepository.findOverlappingBookings(
+                bookingCreateDto.getItemId(), bookingCreateDto.getStart(), bookingCreateDto.getEnd());
+        if (!overlappingBookings.isEmpty()) {
+            throw new AccessDeniedException(String.format("item with id == %d is already booked for the given period", item.getId()));
+        }
         var booking = bookingMapper.dtoToBooking(bookingCreateDto, user, item);
         return bookingMapper.bookingToDtoResponse(bookingRepository.save(booking));
     }
@@ -59,6 +64,9 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new NotFoundException(String.format("booking with id == %d not found", id)));
         if (BookingStatus.APPROVED.equals(booking.getStatus())) {
             throw new AccessDeniedException("Status already approved");
+        }
+        if (approved && booking.getStart().isBefore(LocalDateTime.now())) {
+            throw new AccessDeniedException("Cannot approve booking that starts in the past");
         }
         booking.setStatus(approved ? BookingStatus.APPROVED : BookingStatus.REJECTED);
         bookingRepository.save(booking);
