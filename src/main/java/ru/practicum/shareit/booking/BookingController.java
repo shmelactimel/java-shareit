@@ -10,7 +10,6 @@ import ru.practicum.shareit.booking.dto.BookingCreateDto;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.enums.BookingState;
 import ru.practicum.shareit.booking.service.BookingService;
-import ru.practicum.shareit.exception.ErrorMessages;
 import ru.practicum.shareit.logging.Logging;
 import ru.practicum.shareit.util.PageRequestWithOffset;
 
