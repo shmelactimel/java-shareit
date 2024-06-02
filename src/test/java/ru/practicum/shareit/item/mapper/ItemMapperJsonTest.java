@@ -20,7 +20,6 @@ class ItemMapperJsonTest {
         item.setId(1L);
         item.setName("ItemName");
         item.setDescription("ItemDescription");
-        // Добавьте другие поля item, если необходимо
 
         String json = objectMapper.writeValueAsString(item);
         assertThat(json).contains("\"id\":1");
