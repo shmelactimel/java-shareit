@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.dao.BookingRepository;
 import ru.practicum.shareit.booking.dto.BookingCreateDto;
 import ru.practicum.shareit.booking.dto.BookingDto;
+import ru.practicum.shareit.booking.dto.BookingShortDto;
 import ru.practicum.shareit.booking.enums.BookingState;
 import ru.practicum.shareit.booking.enums.BookingStatus;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
@@ -129,5 +130,25 @@ public class BookingServiceImpl implements BookingService {
                 break;
         }
         return bookingMapper.toDto(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookingShortDto> findApprovedBookingsShortByItemIds(List<Long> itemIds, Pageable pageable) {
+        List<Booking> bookings = bookingRepository.findAllBookingsByItemIdIn(itemIds, pageable.getSort());
+        return bookingMapper.toShortDto(bookings);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BookingShortDto> findApprovedBookingsShortByItem(long itemId, Pageable pageable) {
+        List<Booking> bookings = bookingRepository.findBookingsByItem(itemId);
+        return bookingMapper.toShortDto(bookings);
+    }
+
+    @Override
+    public BookingState parseState(String state) {
+        return BookingState.parse(state)
+                .orElseThrow(() -> new IllegalArgumentException(ErrorMessages.UNKNOWN_STATE.getFormatMessage(state)));
     }
 }

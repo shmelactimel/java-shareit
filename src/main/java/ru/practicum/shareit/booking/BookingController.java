@@ -61,9 +61,8 @@ public class BookingController {
                                           @RequestParam(defaultValue = "0") @Min(0) int from,
                                           @RequestParam(defaultValue = "10") @Min(1) int size) {
         Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
-        return bookingService.findAllForUser(bookerId, BookingState.parse(state)
-                        .orElseThrow(() -> new IllegalArgumentException(ErrorMessages.UNKNOWN_STATE.getFormatMessage(state))),
-                pageable);
+        BookingState bookingState = bookingService.parseState(state);
+        return bookingService.findAllForUser(bookerId, bookingState, pageable);
     }
 
     @Logging
@@ -73,8 +72,7 @@ public class BookingController {
                                            @RequestParam(defaultValue = "0") @Min(0) int from,
                                            @RequestParam(defaultValue = "10") @Min(1) int size) {
         Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
-        return bookingService.findAllForOwner(ownerId, BookingState.parse(state)
-                        .orElseThrow(() -> new IllegalArgumentException(ErrorMessages.UNKNOWN_STATE.getFormatMessage(state))),
-                pageable);
+        BookingState bookingState = bookingService.parseState(state);
+        return bookingService.findAllForOwner(ownerId, bookingState, pageable);
     }
 }

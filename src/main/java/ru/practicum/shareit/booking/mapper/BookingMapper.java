@@ -4,6 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import ru.practicum.shareit.booking.dto.BookingCreateDto;
 import ru.practicum.shareit.booking.dto.BookingDto;
+import ru.practicum.shareit.booking.dto.BookingShortDto;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.user.model.User;
@@ -21,4 +22,8 @@ public interface BookingMapper {
     BookingDto toDto(Booking booking);
 
     List<BookingDto> toDto(List<Booking> bookings);
+
+    BookingShortDto toShortDto(Booking booking);
+
+    List<BookingShortDto> toShortDto(List<Booking> bookings);
 }

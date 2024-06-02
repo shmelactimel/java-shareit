@@ -57,6 +57,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @EntityGraph("booking-graph")
     List<Booking> findAllByItemOwnerIdAndEndBefore(long bookerId, LocalDateTime date, Pageable pageable);
 
+    @Query("select b from Booking b where b.item.id in ?1 and b.status = 'APPROVED'")
+    List<Booking> findAllBookingsByItemIdIn(List<Long> items, Sort sort);
+
+    @Query("select b from Booking b where b.item.id = ?1 and b.status = 'APPROVED'")
+    List<Booking> findBookingsByItem(long itemId);
+
     @Query("select new ru.practicum.shareit.booking.model.BookingShort(b.id, b.item.id, b.booker.id, b.start, b.end) " +
             "from Booking b " +
             "where b.item.id in ?1 and b.status = 'APPROVED'")
