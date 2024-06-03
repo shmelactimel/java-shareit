@@ -23,6 +23,4 @@ public interface BookingService {
     List<BookingShortDto> findApprovedBookingsShortByItemIds(List<Long> itemIds, Pageable pageable);
 
     List<BookingShortDto> findApprovedBookingsShortByItem(long itemId, Pageable pageable);
-
-    BookingState parseState(String state);
 }

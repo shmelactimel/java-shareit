@@ -145,10 +145,4 @@ public class BookingServiceImpl implements BookingService {
         List<Booking> bookings = bookingRepository.findBookingsByItem(itemId);
         return bookingMapper.toShortDto(bookings);
     }
-
-    @Override
-    public BookingState parseState(String state) {
-        return BookingState.parse(state)
-                .orElseThrow(() -> new IllegalArgumentException(ErrorMessages.UNKNOWN_STATE.getFormatMessage(state)));
-    }
 }

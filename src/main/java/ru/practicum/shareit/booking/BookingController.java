@@ -60,7 +60,7 @@ public class BookingController {
                                           @RequestParam(defaultValue = "0") @Min(0) int from,
                                           @RequestParam(defaultValue = "10") @Min(1) int size) {
         Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
-        BookingState bookingState = bookingService.parseState(state);
+        BookingState bookingState = BookingState.parse(state);
         return bookingService.findAllForUser(bookerId, bookingState, pageable);
     }
 
@@ -71,7 +71,7 @@ public class BookingController {
                                            @RequestParam(defaultValue = "0") @Min(0) int from,
                                            @RequestParam(defaultValue = "10") @Min(1) int size) {
         Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
-        BookingState bookingState = bookingService.parseState(state);
+        BookingState bookingState = BookingState.parse(state);
         return bookingService.findAllForOwner(ownerId, bookingState, pageable);
     }
 }

@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -14,15 +16,19 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import ru.practicum.shareit.booking.dto.BookerDto;
 import ru.practicum.shareit.booking.dto.BookingCreateDto;
 import ru.practicum.shareit.booking.dto.BookingDto;
+import ru.practicum.shareit.booking.enums.BookingState;
 import ru.practicum.shareit.booking.enums.BookingStatus;
 import ru.practicum.shareit.booking.service.BookingService;
 import ru.practicum.shareit.exception.ErrorMessages;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.dto.ItemShortDto;
+import ru.practicum.shareit.util.PageRequestWithOffset;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -265,6 +271,62 @@ class BookingControllerTest {
     }
 
     @Test
+    void getAllForUserOk() throws Exception {
+        var start = LocalDateTime.now().plusHours(1);
+        var bookerId = 2L;
+        var response = List.of(
+                BookingDto.builder()
+                        .id(1L)
+                        .booker(new BookerDto(bookerId))
+                        .item(new ItemShortDto(1L, "My drill"))
+                        .start(start)
+                        .end(start.plusDays(1))
+                        .status(BookingStatus.APPROVED)
+                        .build(),
+                BookingDto.builder()
+                        .id(2L)
+                        .booker(new BookerDto(bookerId))
+                        .item(new ItemShortDto(2L, "Turbo drill"))
+                        .start(start)
+                        .end(start.plusDays(1))
+                        .status(BookingStatus.APPROVED)
+                        .build());
+        var from = 0;
+        var size = 10;
+        var mockRequest = MockMvcRequestBuilders.get(String.format("/bookings?from=%d&size=%d", from, size))
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(CUSTOM_HEADER, bookerId);
+        Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
+        when(bookingService.findAllForUser(bookerId, BookingState.ALL, pageable))
+                .thenReturn(response);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(response.size())));
+        for (var state: BookingState.values()) {
+            mockRequest = MockMvcRequestBuilders.get("/bookings?state=" + state)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(CUSTOM_HEADER, bookerId);
+            when(bookingService.findAllForUser(bookerId, state, pageable))
+                    .thenReturn(response);
+            mockMvc.perform(mockRequest)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(response.size())));
+        }
+    }
+
+    @Test
+    void getAllForUserUnknownStateFail() throws Exception {
+        String errorState = "UNKNOWN";
+        var mockRequest = MockMvcRequestBuilders.get("/bookings?state=" + errorState)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(CUSTOM_HEADER, 2L);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is(ErrorMessages.UNKNOWN_STATE.getFormatMessage(errorState))));
+    }
+
+
+    @Test
     void getAllForUserFromFail() throws Exception {
         var mockRequest = MockMvcRequestBuilders.get("/bookings?from=-1&size=1")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -280,6 +342,63 @@ class BookingControllerTest {
                 .header(CUSTOM_HEADER, 2L);
         mockMvc.perform(mockRequest)
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAllForOwnerOk() throws Exception {
+        var start = LocalDateTime.now().plusHours(1);
+        var ownerId = 1L;
+        var response = List.of(
+                BookingDto.builder()
+                        .id(1L)
+                        .booker(new BookerDto(2L))
+                        .item(new ItemShortDto(1L, "My drill"))
+                        .start(start)
+                        .end(start.plusDays(1))
+                        .status(BookingStatus.APPROVED)
+                        .build(),
+                BookingDto.builder()
+                        .id(2L)
+                        .booker(new BookerDto(3L))
+                        .item(new ItemShortDto(2L, "Turbo drill"))
+                        .start(start)
+                        .end(start.plusDays(1))
+                        .status(BookingStatus.APPROVED)
+                        .build());
+        var from = 0;
+        var size = 10;
+        Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
+        var mockRequest = MockMvcRequestBuilders.get(String.format("/bookings/owner?from=%d&size=%d", from, size))
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(CUSTOM_HEADER, ownerId);
+        when(bookingService.findAllForOwner(ownerId, BookingState.ALL, pageable))
+                .thenReturn(response);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(response.size())));
+        for (var state: BookingState.values()) {
+            mockRequest = MockMvcRequestBuilders.get("/bookings/owner?state=" + state)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(CUSTOM_HEADER, ownerId);
+            when(bookingService.findAllForOwner(ownerId, state, pageable))
+                    .thenReturn(response);
+            mockMvc.perform(mockRequest)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(response.size())));
+        }
+    }
+
+    @Test
+    void getAllForOwnerUnknownStateFail() throws Exception {
+        String errorState = "UNKNOWN";
+        var ownerId = 2L;
+        var mockRequest = MockMvcRequestBuilders.get("/bookings/owner?state=" + errorState)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(CUSTOM_HEADER, ownerId);
+
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is(ErrorMessages.UNKNOWN_STATE.getFormatMessage(errorState))));
     }
 
     @Test
@@ -299,4 +418,5 @@ class BookingControllerTest {
         mockMvc.perform(mockRequest)
                 .andExpect(status().isBadRequest());
     }
+
 }
