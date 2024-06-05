@@ -1,6 +1,8 @@
 package ru.practicum.shareit.booking;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -9,9 +11,12 @@ import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.enums.BookingState;
 import ru.practicum.shareit.booking.service.BookingService;
 import ru.practicum.shareit.logging.Logging;
+import ru.practicum.shareit.util.PageRequestWithOffset;
 
+import javax.validation.constraints.Min;
 import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping(path = "/bookings")
 @RequiredArgsConstructor
@@ -51,16 +56,22 @@ public class BookingController {
     @Logging
     @GetMapping
     public List<BookingDto> getAllForUser(@RequestHeader(HEADER_USER_ID) long bookerId,
-                                          @RequestParam(defaultValue = DEFAULT_BOOKING_STATE) String state) {
-        return bookingService.findAllForUser(bookerId, BookingState.parse(state)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown state: " + state)));
+                                          @RequestParam(defaultValue = DEFAULT_BOOKING_STATE) String state,
+                                          @RequestParam(defaultValue = "0") @Min(0) int from,
+                                          @RequestParam(defaultValue = "10") @Min(1) int size) {
+        Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
+        BookingState bookingState = BookingState.parse(state);
+        return bookingService.findAllForUser(bookerId, bookingState, pageable);
     }
 
     @Logging
     @GetMapping("/owner")
     public List<BookingDto> getAllForOwner(@RequestHeader(HEADER_USER_ID) long ownerId,
-                                           @RequestParam(defaultValue = DEFAULT_BOOKING_STATE) String state) {
-        return bookingService.findAllForOwner(ownerId, BookingState.parse(state)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown state: " + state)));
+                                           @RequestParam(defaultValue = DEFAULT_BOOKING_STATE) String state,
+                                           @RequestParam(defaultValue = "0") @Min(0) int from,
+                                           @RequestParam(defaultValue = "10") @Min(1) int size) {
+        Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
+        BookingState bookingState = BookingState.parse(state);
+        return bookingService.findAllForOwner(ownerId, bookingState, pageable);
     }
 }
