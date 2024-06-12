@@ -203,7 +203,7 @@ class ItemControllerTest {
     @Test
     void searchOk() throws Exception {
         var userId = 1L;
-        var text = "ru/practicum/shareit/item";
+        var text = "item";
         var from = 0;
         var size = 10;
         var mockRequest = MockMvcRequestBuilders.get("/items/search")
@@ -257,7 +257,7 @@ class ItemControllerTest {
     @Test
     void searchNegativeFromFail() throws Exception {
         var userId = 1L;
-        var text = "ru/practicum/shareit/item";
+        var text = "item";
         var mockRequest = MockMvcRequestBuilders.get("/items/search")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(CUSTOM_HEADER, userId)
@@ -271,7 +271,7 @@ class ItemControllerTest {
     @Test
     void searchZeroSizeFail() throws Exception {
         var userId = 1L;
-        var text = "ru/practicum/shareit/item";
+        var text = "item";
         var mockRequest = MockMvcRequestBuilders.get("/items/search")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header(CUSTOM_HEADER, userId)

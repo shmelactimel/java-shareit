@@ -35,7 +35,7 @@ class UserClientTest {
     @Test
     public void createOk() {
         var userDto = UserDto.builder()
-                .name("ru/practicum/shareit/user")
+                .name("user")
                 .email("user@mailcom")
                 .build();
         Mockito.when(restTemplate.exchange("", HttpMethod.POST,
@@ -70,7 +70,7 @@ class UserClientTest {
     public void updateOk() {
         var userId = 1L;
         var userDto = UserDto.builder()
-                .name("ru/practicum/shareit/user")
+                .name("user")
                 .email("user@mailcom")
                 .build();
         Mockito.when(restTemplate.exchange("/" + userId, HttpMethod.PATCH,

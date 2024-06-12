@@ -1,170 +1,205 @@
-package ru.practicum.shareit.user;
+package ru.practicum.shareit.request.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.hamcrest.core.IsNull;
-import org.junit.jupiter.api.BeforeAll;
+import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import ru.practicum.shareit.user.dto.UserDto;
-import ru.practicum.shareit.user.service.UserService;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.test.annotation.DirtiesContext;
+import ru.practicum.shareit.exception.ErrorMessages;
+import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.item.mapper.ItemMapper;
+import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.request.Request;
+import ru.practicum.shareit.request.dto.RequestCreateDto;
+import ru.practicum.shareit.request.mapper.RequestMapper;
+import ru.practicum.shareit.util.PageRequestWithOffset;
 
-import java.util.List;
+import javax.persistence.EntityManager;
+import javax.transaction.Transactional;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
-import static org.hamcrest.core.Is.is;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@WebMvcTest(UserController.class)
-class UserControllerTest {
+@Transactional
+@SpringBootTest
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
+class RequestServiceImplTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    private final RequestService requestService;
+    private final RequestMapper requestMapper;
+    private final ItemMapper itemMapper;
+    private final EntityManager em;
 
-    @MockBean
-    private UserService userService;
+    private final long ownerId = 1;
+    private final long bookerId = 2;
+    private final long userId = 3;
+    private final long unknownUserId = 100;
 
-    private static ObjectMapper mapper;
-
-    @BeforeAll
-    public static void setUp() {
-        mapper = new ObjectMapper();
-    }
-
-    @Test
-    void postOk() throws Exception {
-        var content = "{\"email\": \"user@mail.com\",\"name\": \"username\"}";
-        var answer = "{\"email\": \"user@mail.com\",\"name\": \"username\",\"id\": 1}";
-
-        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(content);
-        when(userService.create(mapper.readValue(content, UserDto.class)))
-                .thenReturn(mapper.readValue(answer, UserDto.class));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id", is(1)))
-                .andExpect(jsonPath("$.name", is("username")))
-                .andExpect(jsonPath("$.email", is("user@mail.com")));
-
-        content = "{\"email\": \"user@mail.com\"}";
-        answer = "{\"email\": \"user@mail.com\",\"name\": null,\"id\": 2}";
-
-        mockRequest = MockMvcRequestBuilders.post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(content);
-        when(userService.create(mapper.readValue(content, UserDto.class)))
-                .thenReturn(mapper.readValue(answer, UserDto.class));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id", is(2)))
-                .andExpect(jsonPath("$.name").value(IsNull.nullValue()))
-                .andExpect(jsonPath("$.email", is("user@mail.com")));
-    }
+    private final long requestWithoutItemsId = 1;
+    private final long requestWithItemsId = 2;
+    private final long unknownRequestId = 100;
 
     @Test
-    void postDoubleEmailFail() throws Exception {
-        var content = "{\"email\": \"user@mail.com\",\"name\": \"username\"}";
-
-        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(content);
-        when(userService.create(mapper.readValue(content, UserDto.class)))
-                .thenThrow(new DataIntegrityViolationException(""));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    void patchOk() throws Exception {
-        var content = "{\"email\": \"new@mail.com\"}";
-        var answer = "{\"id\": 1,\"email\": \"new@mail.com\",\"name\": \"user name\"}";
-
-        var mockRequest = MockMvcRequestBuilders.patch("/users/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(content);
-
-        when(userService.update(1, mapper.readValue(content, UserDto.class)))
-                .thenReturn(mapper.readValue(answer, UserDto.class));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email", is("new@mail.com")))
-                .andExpect(jsonPath("$.id", is(1)))
-                .andExpect(jsonPath("$.name", is("user name")));
-
-        content = "{\"name\": \"new name\"}";
-        answer = "{\"id\": 1,\"email\": \"new@mail.com\",\"name\": \"new name\"}";
-
-        mockRequest = MockMvcRequestBuilders.patch("/users/1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(content);
-
-        when(userService.update(1, mapper.readValue(content, UserDto.class)))
-                .thenReturn(mapper.readValue(answer, UserDto.class));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email", is("new@mail.com")))
-                .andExpect(jsonPath("$.id", is(1)))
-                .andExpect(jsonPath("$.name", is("new name")));
-    }
-
-    @Test
-    void getByIdOk() throws Exception {
-        var userId = 1L;
-        var userDto = UserDto.builder()
-                .id(userId)
-                .name("username")
-                .email("user@mail.com")
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    public void createOk() {
+        var requestCreateDto = RequestCreateDto.builder()
+                .description("rq description")
                 .build();
-        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.get("/users/" + userId)
-                .contentType(MediaType.APPLICATION_JSON);
-        when(userService.findById(userId))
-                .thenReturn(userDto);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is(userDto.getId()), Long.class))
-                .andExpect(jsonPath("$.name", is(userDto.getName())))
-                .andExpect(jsonPath("$.email", is(userDto.getEmail())));
+        var requestDto = requestService.create(bookerId, requestCreateDto);
+        var query = em.createQuery("select r from Request r where r.id = :id", Request.class);
+        var request = query.setParameter("id", requestDto.getId())
+                .getSingleResult();
+
+        assertThat(request.getId(), equalTo(requestDto.getId()));
+        assertThat(request.getDescription(), equalTo(requestCreateDto.getDescription()));
+        assertThat(request.getCreated(), equalTo(requestDto.getCreated()));
+        assertThat(request.getUser().getId(), equalTo(bookerId));
     }
 
     @Test
-    void getAllOk() throws Exception {
-        var userId = 1L;
-        var users = List.of(
-                UserDto.builder()
-                        .id(userId)
-                        .name("user1name")
-                        .email("user1@mail.com")
-                        .build(),
-                UserDto.builder()
-                        .id(userId + 1)
-                        .name("user2name")
-                        .email("user2@mail.com")
-                        .build()
-        );
-        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.get("/users")
-                .contentType(MediaType.APPLICATION_JSON);
-        when(userService.getAll())
-                .thenReturn(users);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id", is(users.get(0).getId()), Long.class))
-                .andExpect(jsonPath("$[1].id", is(users.get(1).getId()), Long.class));
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    void createWithoutUserFail() {
+        var requestCreateDto = RequestCreateDto.builder()
+                .description("rq description")
+                .build();
+        var exception = assertThrows(NotFoundException.class, () -> requestService.create(unknownUserId, requestCreateDto));
+        assertThat(exception.getMessage(), equalTo(ErrorMessages.USER_NOT_FOUND.getFormatMessage(unknownUserId)));
     }
 
     @Test
-    void deleteOk() throws Exception {
-        var userId = 1L;
-        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.delete("/users/" + userId)
-                .contentType(MediaType.APPLICATION_JSON);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isNoContent());
+    void findByIdOk() {
+
+        var requestQuery = em.createQuery("select r from Request r where r.id = :id", Request.class);
+        var request = requestQuery.setParameter("id", requestWithoutItemsId)
+                .getSingleResult();
+
+        var itemsQuery = em.createQuery("select i from Item i where i.request.id = :id", Item.class);
+        var items = itemsQuery.setParameter("id", requestWithoutItemsId)
+                .getResultStream()
+                .map(itemMapper::toItemWithRequestDto)
+                .collect(Collectors.toList());
+
+        var serviceRequest = requestService.findById(bookerId, requestWithoutItemsId);
+
+        assertThat(serviceRequest.getId(), equalTo(requestWithoutItemsId));
+        assertThat(serviceRequest.getDescription(), equalTo(request.getDescription()));
+        assertThat(serviceRequest.getCreated(), equalTo(request.getCreated()));
+        assertThat(serviceRequest.getItems(), hasSize(items.size()));
+        org.assertj.core.api.Assertions.assertThat(serviceRequest.getItems())
+                .usingRecursiveComparison()
+                .isEqualTo(items);
+
+        request = requestQuery.setParameter("id", requestWithItemsId)
+                .getSingleResult();
+        items = itemsQuery.setParameter("id", requestWithItemsId)
+                .getResultStream()
+                .map(itemMapper::toItemWithRequestDto)
+                .collect(Collectors.toList());
+
+        serviceRequest = requestService.findById(bookerId, requestWithItemsId);
+
+        assertThat(serviceRequest.getId(), equalTo(request.getId()));
+        assertThat(serviceRequest.getDescription(), equalTo(request.getDescription()));
+        assertThat(serviceRequest.getCreated(), equalTo(request.getCreated()));
+
+        org.assertj.core.api.Assertions.assertThat(serviceRequest.getItems())
+                .usingRecursiveComparison()
+                .isEqualTo(items);
+    }
+
+    @Test
+    void findByIdWithoutUserFail() {
+        var exception = assertThrows(NotFoundException.class,
+                () -> requestService.findById(unknownUserId, requestWithItemsId));
+        assertThat(exception.getMessage(), equalTo(ErrorMessages.USER_NOT_FOUND.getFormatMessage(unknownUserId)));
+    }
+
+    @Test
+    void findByIdWithoutRequestFail() {
+        var exception = assertThrows(NotFoundException.class,
+                () -> requestService.findById(bookerId, unknownRequestId));
+        assertThat(exception.getMessage(), equalTo(
+                ErrorMessages.REQUEST_NOT_FOUND.getFormatMessage(unknownRequestId)));
+    }
+
+    @Test
+    void findByUserIdOk() {
+        var requestQuery = em.createQuery("select r from Request r where r.user.id = :id", Request.class);
+        var requests = requestQuery.setParameter("id", bookerId)
+                .getResultList();
+
+        var itemsQuery = em.createQuery("select i from Item i where i.request.id in :id", Item.class);
+        var items = itemsQuery.setParameter("id", requests.stream().map(Request::getId).collect(Collectors.toList()))
+                .getResultList().stream()
+                .collect(Collectors.groupingBy(i -> i.getRequest().getId(),
+                        Collectors.mapping(itemMapper::toItemWithRequestDto, Collectors.toList())));
+        var requestWithItemsDto = requests.stream()
+                .sorted(Comparator.comparing(Request::getCreated).reversed())
+                .map(r -> requestMapper.toRequestWithItemsDto(r, items.getOrDefault(r.getId(), Collections.emptyList())))
+                .collect(Collectors.toList());
+        var serviceRequest = requestService.findByUserId(bookerId);
+
+        assertThat(serviceRequest.size(), equalTo(requests.size()));
+        org.assertj.core.api.Assertions.assertThat(serviceRequest)
+                .usingRecursiveComparison()
+                .isEqualTo(requestWithItemsDto);
+    }
+
+    @Test
+    void findByUserIdWithoutUserFail() {
+        var exception = assertThrows(NotFoundException.class,
+                () -> requestService.findByUserId(unknownUserId));
+        assertThat(exception.getMessage(), equalTo(ErrorMessages.USER_NOT_FOUND.getFormatMessage(unknownUserId)));
+    }
+
+    @Test
+    void findAllOk() {
+        var from = 0;
+        var size = 10;
+        Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("created").descending());
+        var result = requestService.findAll(bookerId, pageable);
+        assertThat(result, hasSize(0));
+
+        size = 1;
+        from = 1;
+        var requestQuery = em.createQuery("select r from Request r where r.user.id <> :id", Request.class);
+        var requests = requestQuery.setParameter("id", userId)
+                .getResultList();
+
+        var itemsQuery = em.createQuery("select i from Item i where i.request.id in :id", Item.class);
+        var items = itemsQuery.setParameter("id", requests.stream().map(Request::getId).collect(Collectors.toList()))
+                .getResultList().stream()
+                .collect(Collectors.groupingBy(i -> i.getRequest().getId(),
+                        Collectors.mapping(itemMapper::toItemWithRequestDto, Collectors.toList())));
+        var requestWithItemsDto = requests.stream()
+                .sorted(Comparator.comparing(Request::getCreated).reversed())
+                .skip(from / size * size)
+                .limit(size)
+                .map(r -> requestMapper.toRequestWithItemsDto(r, items.getOrDefault(r.getId(), Collections.emptyList())))
+                .collect(Collectors.toList());
+        pageable = PageRequestWithOffset.of(from, size, Sort.by("created").descending());
+        result = requestService.findAll(ownerId, pageable);
+
+        assertThat(result, hasSize(size));
+        org.assertj.core.api.Assertions.assertThat(result)
+                .usingRecursiveComparison()
+                .isEqualTo(requestWithItemsDto);
+    }
+
+    @Test
+    void findAllWithoutUserFail() {
+        var from = 0;
+        var size = 10;
+        Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("created").descending());
+        var exception = assertThrows(NotFoundException.class,
+                () -> requestService.findAll(unknownUserId, pageable));
+        assertThat(exception.getMessage(), equalTo(ErrorMessages.USER_NOT_FOUND.getFormatMessage(unknownUserId)));
     }
 }

@@ -38,7 +38,7 @@ class ItemClientTest {
     public void createOk() {
         var userId = 1L;
         var itemDto = ItemDto.builder()
-                .name("ru/practicum/shareit/item")
+                .name("item")
                 .description("item_description")
                 .available(true)
                 .build();
@@ -85,7 +85,7 @@ class ItemClientTest {
         var userId = 1L;
         var itemId = 1L;
         var itemDto = ItemDto.builder()
-                .name("ru/practicum/shareit/item")
+                .name("item")
                 .description("item_description")
                 .available(true)
                 .build();
