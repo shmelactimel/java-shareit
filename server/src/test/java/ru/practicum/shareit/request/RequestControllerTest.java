@@ -1,205 +1,186 @@
-package ru.practicum.shareit.request.service;
+package ru.practicum.shareit.request;
 
-import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.test.annotation.DirtiesContext;
-import ru.practicum.shareit.exception.ErrorMessages;
-import ru.practicum.shareit.exception.NotFoundException;
-import ru.practicum.shareit.item.mapper.ItemMapper;
-import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.request.Request;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import ru.practicum.shareit.request.dto.RequestCreateDto;
-import ru.practicum.shareit.request.mapper.RequestMapper;
+import ru.practicum.shareit.request.dto.RequestDto;
+import ru.practicum.shareit.request.dto.RequestWithItemsDto;
+import ru.practicum.shareit.request.service.RequestService;
 import ru.practicum.shareit.util.PageRequestWithOffset;
 
-import javax.persistence.EntityManager;
-import javax.transaction.Transactional;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.stream.Collectors;
+import java.util.List;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.hamcrest.core.Is.is;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@Transactional
-@SpringBootTest
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
-class RequestServiceImplTest {
+@WebMvcTest(RequestController.class)
+class RequestControllerTest {
 
-    private final RequestService requestService;
-    private final RequestMapper requestMapper;
-    private final ItemMapper itemMapper;
-    private final EntityManager em;
+    @Autowired
+    private MockMvc mockMvc;
+    @MockBean
+    private RequestService requestService;
+    private static ObjectMapper mapper;
+    private static final String USER_ID_HEADER = "X-Sharer-User-Id";
 
-    private final long ownerId = 1;
-    private final long bookerId = 2;
-    private final long userId = 3;
-    private final long unknownUserId = 100;
-
-    private final long requestWithoutItemsId = 1;
-    private final long requestWithItemsId = 2;
-    private final long unknownRequestId = 100;
+    @BeforeAll
+    public static void setUp() {
+        mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+    }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
-    public void createOk() {
-        var requestCreateDto = RequestCreateDto.builder()
-                .description("rq description")
+    void postOk() throws Exception {
+        var userId = 1L;
+        var createDto = RequestCreateDto.builder()
+                .description("request description")
                 .build();
-        var requestDto = requestService.create(bookerId, requestCreateDto);
-        var query = em.createQuery("select r from Request r where r.id = :id", Request.class);
-        var request = query.setParameter("id", requestDto.getId())
-                .getSingleResult();
-
-        assertThat(request.getId(), equalTo(requestDto.getId()));
-        assertThat(request.getDescription(), equalTo(requestCreateDto.getDescription()));
-        assertThat(request.getCreated(), equalTo(requestDto.getCreated()));
-        assertThat(request.getUser().getId(), equalTo(bookerId));
-    }
-
-    @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
-    void createWithoutUserFail() {
-        var requestCreateDto = RequestCreateDto.builder()
-                .description("rq description")
+        var createdDate = LocalDateTime.now();
+        var answer = RequestDto.builder()
+                .id(1L)
+                .description(createDto.getDescription())
+                .created(createdDate)
                 .build();
-        var exception = assertThrows(NotFoundException.class, () -> requestService.create(unknownUserId, requestCreateDto));
-        assertThat(exception.getMessage(), equalTo(ErrorMessages.USER_NOT_FOUND.getFormatMessage(unknownUserId)));
+        var mockRequest = MockMvcRequestBuilders.post("/requests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(USER_ID_HEADER, userId)
+                .content(mapper.writeValueAsString(createDto));
+        when(requestService.create(userId, createDto))
+                .thenReturn(answer);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", is(answer.getId()), Long.class))
+                .andExpect(jsonPath("$.description", is(answer.getDescription())))
+                .andExpect(jsonPath("$.created", is(answer.getCreated().format(DateTimeFormatter.ISO_DATE_TIME))));
     }
 
     @Test
-    void findByIdOk() {
-
-        var requestQuery = em.createQuery("select r from Request r where r.id = :id", Request.class);
-        var request = requestQuery.setParameter("id", requestWithoutItemsId)
-                .getSingleResult();
-
-        var itemsQuery = em.createQuery("select i from Item i where i.request.id = :id", Item.class);
-        var items = itemsQuery.setParameter("id", requestWithoutItemsId)
-                .getResultStream()
-                .map(itemMapper::toItemWithRequestDto)
-                .collect(Collectors.toList());
-
-        var serviceRequest = requestService.findById(bookerId, requestWithoutItemsId);
-
-        assertThat(serviceRequest.getId(), equalTo(requestWithoutItemsId));
-        assertThat(serviceRequest.getDescription(), equalTo(request.getDescription()));
-        assertThat(serviceRequest.getCreated(), equalTo(request.getCreated()));
-        assertThat(serviceRequest.getItems(), hasSize(items.size()));
-        org.assertj.core.api.Assertions.assertThat(serviceRequest.getItems())
-                .usingRecursiveComparison()
-                .isEqualTo(items);
-
-        request = requestQuery.setParameter("id", requestWithItemsId)
-                .getSingleResult();
-        items = itemsQuery.setParameter("id", requestWithItemsId)
-                .getResultStream()
-                .map(itemMapper::toItemWithRequestDto)
-                .collect(Collectors.toList());
-
-        serviceRequest = requestService.findById(bookerId, requestWithItemsId);
-
-        assertThat(serviceRequest.getId(), equalTo(request.getId()));
-        assertThat(serviceRequest.getDescription(), equalTo(request.getDescription()));
-        assertThat(serviceRequest.getCreated(), equalTo(request.getCreated()));
-
-        org.assertj.core.api.Assertions.assertThat(serviceRequest.getItems())
-                .usingRecursiveComparison()
-                .isEqualTo(items);
+    void postEmptyUserIdHeaderFail() throws Exception {
+        var createDto = RequestCreateDto.builder()
+                .description("description")
+                .build();
+        var mockRequest = MockMvcRequestBuilders.post("/requests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(createDto));
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
-    void findByIdWithoutUserFail() {
-        var exception = assertThrows(NotFoundException.class,
-                () -> requestService.findById(unknownUserId, requestWithItemsId));
-        assertThat(exception.getMessage(), equalTo(ErrorMessages.USER_NOT_FOUND.getFormatMessage(unknownUserId)));
+    void getByIdOk() throws Exception {
+        var userId = 1L;
+        var requestId = 1L;
+        var createdDate = LocalDateTime.now();
+        var answer = RequestWithItemsDto.builder()
+                .id(requestId)
+                .description("request description")
+                .created(createdDate)
+                .items(Collections.emptyList())
+                .build();
+        var mockRequest = MockMvcRequestBuilders.get("/requests/" + requestId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(USER_ID_HEADER, userId);
+        when(requestService.findById(userId, requestId))
+                .thenReturn(answer);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(answer.getId()), Long.class))
+                .andExpect(jsonPath("$.description", is(answer.getDescription())))
+                .andExpect(jsonPath("$.created", is(answer.getCreated().format(DateTimeFormatter.ISO_DATE_TIME))))
+                .andExpect(jsonPath("$.items", hasSize(answer.getItems().size())));
     }
 
     @Test
-    void findByIdWithoutRequestFail() {
-        var exception = assertThrows(NotFoundException.class,
-                () -> requestService.findById(bookerId, unknownRequestId));
-        assertThat(exception.getMessage(), equalTo(
-                ErrorMessages.REQUEST_NOT_FOUND.getFormatMessage(unknownRequestId)));
+    void getEmptyUserIdHeaderFail() throws Exception {
+        var requestId = 1L;
+        var mockRequest = MockMvcRequestBuilders.get("/requests/" + requestId)
+                .contentType(MediaType.APPLICATION_JSON);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
-    void findByUserIdOk() {
-        var requestQuery = em.createQuery("select r from Request r where r.user.id = :id", Request.class);
-        var requests = requestQuery.setParameter("id", bookerId)
-                .getResultList();
-
-        var itemsQuery = em.createQuery("select i from Item i where i.request.id in :id", Item.class);
-        var items = itemsQuery.setParameter("id", requests.stream().map(Request::getId).collect(Collectors.toList()))
-                .getResultList().stream()
-                .collect(Collectors.groupingBy(i -> i.getRequest().getId(),
-                        Collectors.mapping(itemMapper::toItemWithRequestDto, Collectors.toList())));
-        var requestWithItemsDto = requests.stream()
-                .sorted(Comparator.comparing(Request::getCreated).reversed())
-                .map(r -> requestMapper.toRequestWithItemsDto(r, items.getOrDefault(r.getId(), Collections.emptyList())))
-                .collect(Collectors.toList());
-        var serviceRequest = requestService.findByUserId(bookerId);
-
-        assertThat(serviceRequest.size(), equalTo(requests.size()));
-        org.assertj.core.api.Assertions.assertThat(serviceRequest)
-                .usingRecursiveComparison()
-                .isEqualTo(requestWithItemsDto);
+    void getForUserOk() throws Exception {
+        var userId = 1L;
+        var createdDate = LocalDateTime.now();
+        var answer = List.of(
+                RequestWithItemsDto.builder()
+                        .id(1L)
+                        .description("request description")
+                        .created(createdDate)
+                        .items(Collections.emptyList())
+                        .build()
+        );
+        var mockRequest = MockMvcRequestBuilders.get("/requests")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(USER_ID_HEADER, userId);
+        when(requestService.findByUserId(userId))
+                .thenReturn(answer);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id", is(answer.get(0).getId()), Long.class))
+                .andExpect(jsonPath("$[0].description", is(answer.get(0).getDescription())))
+                .andExpect(jsonPath("$[0].created", is(answer.get(0).getCreated().format(DateTimeFormatter.ISO_DATE_TIME))))
+                .andExpect(jsonPath("$[0].items", hasSize(answer.get(0).getItems().size())));
     }
 
     @Test
-    void findByUserIdWithoutUserFail() {
-        var exception = assertThrows(NotFoundException.class,
-                () -> requestService.findByUserId(unknownUserId));
-        assertThat(exception.getMessage(), equalTo(ErrorMessages.USER_NOT_FOUND.getFormatMessage(unknownUserId)));
+    void getForUserEmptyUserIdHeaderFail() throws Exception {
+        var mockRequest = MockMvcRequestBuilders.get("/requests")
+                .contentType(MediaType.APPLICATION_JSON);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
-    void findAllOk() {
+    void getAllOk() throws Exception {
+        var userId = 1L;
+        var createdDate = LocalDateTime.now();
+        var answer = List.of(
+                RequestWithItemsDto.builder()
+                        .id(1L)
+                        .description("request description")
+                        .created(createdDate)
+                        .items(Collections.emptyList())
+                        .build()
+        );
         var from = 0;
         var size = 10;
+        var mockRequest = MockMvcRequestBuilders.get(String.format("/requests/all?from=%d&size=%d", from, size))
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(USER_ID_HEADER, userId);
         Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("created").descending());
-        var result = requestService.findAll(bookerId, pageable);
-        assertThat(result, hasSize(0));
-
-        size = 1;
-        from = 1;
-        var requestQuery = em.createQuery("select r from Request r where r.user.id <> :id", Request.class);
-        var requests = requestQuery.setParameter("id", userId)
-                .getResultList();
-
-        var itemsQuery = em.createQuery("select i from Item i where i.request.id in :id", Item.class);
-        var items = itemsQuery.setParameter("id", requests.stream().map(Request::getId).collect(Collectors.toList()))
-                .getResultList().stream()
-                .collect(Collectors.groupingBy(i -> i.getRequest().getId(),
-                        Collectors.mapping(itemMapper::toItemWithRequestDto, Collectors.toList())));
-        var requestWithItemsDto = requests.stream()
-                .sorted(Comparator.comparing(Request::getCreated).reversed())
-                .skip(from / size * size)
-                .limit(size)
-                .map(r -> requestMapper.toRequestWithItemsDto(r, items.getOrDefault(r.getId(), Collections.emptyList())))
-                .collect(Collectors.toList());
-        pageable = PageRequestWithOffset.of(from, size, Sort.by("created").descending());
-        result = requestService.findAll(ownerId, pageable);
-
-        assertThat(result, hasSize(size));
-        org.assertj.core.api.Assertions.assertThat(result)
-                .usingRecursiveComparison()
-                .isEqualTo(requestWithItemsDto);
+        when(requestService.findAll(userId, pageable))
+                .thenReturn(answer);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id", is(answer.get(0).getId()), Long.class))
+                .andExpect(jsonPath("$[0].description", is(answer.get(0).getDescription())))
+                .andExpect(jsonPath("$[0].created", is(answer.get(0).getCreated().format(DateTimeFormatter.ISO_DATE_TIME))))
+                .andExpect(jsonPath("$[0].items", hasSize(answer.get(0).getItems().size())));
     }
 
     @Test
-    void findAllWithoutUserFail() {
-        var from = 0;
-        var size = 10;
-        Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("created").descending());
-        var exception = assertThrows(NotFoundException.class,
-                () -> requestService.findAll(unknownUserId, pageable));
-        assertThat(exception.getMessage(), equalTo(ErrorMessages.USER_NOT_FOUND.getFormatMessage(unknownUserId)));
+    void getAllEmptyUserIdHeaderFail() throws Exception {
+        var mockRequest = MockMvcRequestBuilders.get("/requests/all")
+                .contentType(MediaType.APPLICATION_JSON);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
     }
 }
