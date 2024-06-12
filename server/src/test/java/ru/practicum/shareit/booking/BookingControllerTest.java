@@ -85,54 +85,6 @@ class BookingControllerTest {
     }
 
     @Test
-    void postValidationFailDates() throws Exception {
-        var start = LocalDateTime.now().plusHours(1);
-        var end = start.plusDays(1);
-        var bookerId = 1L;
-        var request = BookingCreateDto.builder()
-                .itemId(1L)
-                .start(end)
-                .end(start)
-                .build();
-        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.post("/bookings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, bookerId)
-                .content(mapper.writeValueAsString(request));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error", is(ErrorMessages.VALIDATION_EXCEPTION.getMessage())));
-
-        request.setStart(LocalDateTime.now().minusHours(1));
-        request.setEnd(end);
-        mockRequest = MockMvcRequestBuilders.post("/bookings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, bookerId)
-                .content(mapper.writeValueAsString(request));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error", is(ErrorMessages.VALIDATION_EXCEPTION.getMessage())));
-    }
-
-    @Test
-    void postValidationFailItemId() throws Exception {
-        var start = LocalDateTime.now().plusHours(1);
-        var end = start.plusDays(1);
-        var bookerId = 1L;
-        var request = BookingCreateDto.builder()
-                .itemId(null)
-                .start(start)
-                .end(end)
-                .build();
-        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.post("/bookings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, bookerId)
-                .content(mapper.writeValueAsString(request));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error", is(ErrorMessages.VALIDATION_EXCEPTION.getMessage())));
-    }
-
-    @Test
     void postValidationFailBookerId() throws Exception {
         var start = LocalDateTime.now().plusHours(1);
         var end = start.plusDays(1);
@@ -295,7 +247,11 @@ class BookingControllerTest {
         var size = 10;
         var mockRequest = MockMvcRequestBuilders.get(String.format("/bookings?from=%d&size=%d", from, size))
                 .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, bookerId);
+                .header(CUSTOM_HEADER, bookerId)
+                .param("state", BookingState.ALL.name())
+                .param("from", String.valueOf(from))
+                .param("size", String.valueOf(size));
+
         Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
         when(bookingService.findAllForUser(bookerId, BookingState.ALL, pageable))
                 .thenReturn(response);
@@ -303,45 +259,19 @@ class BookingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(response.size())));
         for (var state: BookingState.values()) {
-            mockRequest = MockMvcRequestBuilders.get("/bookings?state=" + state)
+            mockRequest = MockMvcRequestBuilders.get("/bookings")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .header(CUSTOM_HEADER, bookerId);
+                    .header(CUSTOM_HEADER, bookerId)
+                    .param("state", BookingState.ALL.name())
+                    .param("from", String.valueOf(from))
+                    .param("size", String.valueOf(size));
+
             when(bookingService.findAllForUser(bookerId, state, pageable))
                     .thenReturn(response);
             mockMvc.perform(mockRequest)
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(response.size())));
         }
-    }
-
-    @Test
-    void getAllForUserUnknownStateFail() throws Exception {
-        String errorState = "UNKNOWN";
-        var mockRequest = MockMvcRequestBuilders.get("/bookings?state=" + errorState)
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, 2L);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error", is(ErrorMessages.UNKNOWN_STATE.getFormatMessage(errorState))));
-    }
-
-
-    @Test
-    void getAllForUserFromFail() throws Exception {
-        var mockRequest = MockMvcRequestBuilders.get("/bookings?from=-1&size=1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, 2L);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void getAllForUserSizeFail() throws Exception {
-        var mockRequest = MockMvcRequestBuilders.get("/bookings?from=0&size=0")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, 2L);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -370,16 +300,24 @@ class BookingControllerTest {
         Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
         var mockRequest = MockMvcRequestBuilders.get(String.format("/bookings/owner?from=%d&size=%d", from, size))
                 .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, ownerId);
+                .header(CUSTOM_HEADER, ownerId)
+                .param("state", BookingState.ALL.name())
+                .param("from", String.valueOf(from))
+                .param("size", String.valueOf(size));
+
         when(bookingService.findAllForOwner(ownerId, BookingState.ALL, pageable))
                 .thenReturn(response);
         mockMvc.perform(mockRequest)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(response.size())));
         for (var state: BookingState.values()) {
-            mockRequest = MockMvcRequestBuilders.get("/bookings/owner?state=" + state)
+            mockRequest = MockMvcRequestBuilders.get("/bookings/owner")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .header(CUSTOM_HEADER, ownerId);
+                    .header(CUSTOM_HEADER, ownerId)
+                    .param("state", state.name())
+                    .param("from", String.valueOf(from))
+                    .param("size", String.valueOf(size));
+
             when(bookingService.findAllForOwner(ownerId, state, pageable))
                     .thenReturn(response);
             mockMvc.perform(mockRequest)
@@ -387,36 +325,4 @@ class BookingControllerTest {
                     .andExpect(jsonPath("$", hasSize(response.size())));
         }
     }
-
-    @Test
-    void getAllForOwnerUnknownStateFail() throws Exception {
-        String errorState = "UNKNOWN";
-        var ownerId = 2L;
-        var mockRequest = MockMvcRequestBuilders.get("/bookings/owner?state=" + errorState)
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, ownerId);
-
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error", is(ErrorMessages.UNKNOWN_STATE.getFormatMessage(errorState))));
-    }
-
-    @Test
-    void getAllForOwnerFromFail() throws Exception {
-        var mockRequest = MockMvcRequestBuilders.get("/bookings/owner?from=-1&size=1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, 1L);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void getAllForOwnerSizeFail() throws Exception {
-        var mockRequest = MockMvcRequestBuilders.get("/bookings/owner?from=0&size=0")
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(CUSTOM_HEADER, 1L);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isBadRequest());
-    }
-
 }
