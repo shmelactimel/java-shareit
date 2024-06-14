@@ -16,7 +16,6 @@ import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.service.UserService;
 
 import java.util.List;
-import javax.validation.constraints;
 
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.when;
