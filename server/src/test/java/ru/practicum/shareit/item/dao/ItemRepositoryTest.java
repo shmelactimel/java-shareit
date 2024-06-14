@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.ANY)
-@Sql(scripts = "server/src/test/resources/data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = "data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 class ItemRepositoryTest {
 

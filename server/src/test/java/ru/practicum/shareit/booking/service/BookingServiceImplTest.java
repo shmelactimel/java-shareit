@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @Transactional
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = Replace.ANY)
-@Sql(scripts = "server/src/test/resources/data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = "data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 class BookingServiceImplTest {
 
