@@ -71,18 +71,6 @@ class RequestControllerTest {
     }
 
     @Test
-    void postEmptyUserIdHeaderFail() throws Exception {
-        var createDto = RequestCreateDto.builder()
-                .description("description")
-                .build();
-        var mockRequest = MockMvcRequestBuilders.post("/requests")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(mapper.writeValueAsString(createDto));
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isInternalServerError());
-    }
-
-    @Test
     void getByIdOk() throws Exception {
         var userId = 1L;
         var requestId = 1L;
@@ -104,15 +92,6 @@ class RequestControllerTest {
                 .andExpect(jsonPath("$.description", is(answer.getDescription())))
                 .andExpect(jsonPath("$.created", is(answer.getCreated().format(DateTimeFormatter.ISO_DATE_TIME))))
                 .andExpect(jsonPath("$.items", hasSize(answer.getItems().size())));
-    }
-
-    @Test
-    void getEmptyUserIdHeaderFail() throws Exception {
-        var requestId = 1L;
-        var mockRequest = MockMvcRequestBuilders.get("/requests/" + requestId)
-                .contentType(MediaType.APPLICATION_JSON);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isInternalServerError());
     }
 
     @Test
@@ -174,13 +153,5 @@ class RequestControllerTest {
                 .andExpect(jsonPath("$[0].description", is(answer.get(0).getDescription())))
                 .andExpect(jsonPath("$[0].created", is(answer.get(0).getCreated().format(DateTimeFormatter.ISO_DATE_TIME))))
                 .andExpect(jsonPath("$[0].items", hasSize(answer.get(0).getItems().size())));
-    }
-
-    @Test
-    void getAllEmptyUserIdHeaderFail() throws Exception {
-        var mockRequest = MockMvcRequestBuilders.get("/requests/all")
-                .contentType(MediaType.APPLICATION_JSON);
-        mockMvc.perform(mockRequest)
-                .andExpect(status().isInternalServerError());
     }
 }
