@@ -12,7 +12,6 @@ import ru.practicum.shareit.booking.service.BookingService;
 import ru.practicum.shareit.logging.Logging;
 import ru.practicum.shareit.util.PageRequestWithOffset;
 
-import javax.validation.constraints.Min;
 import java.util.List;
 
 @RestController
@@ -62,7 +61,7 @@ public class BookingController {
     public List<BookingDto> getAllForOwner(@RequestHeader(HEADER_USER_ID) long ownerId,
                                            @RequestParam BookingState state,
                                            @RequestParam int from,
-                                           @RequestParam(defaultValue = "10") @Min(1) int size) {
+                                           @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequestWithOffset.of(from, size, Sort.by("start").descending());
         return bookingService.findAllForOwner(ownerId, state, pageable);
     }

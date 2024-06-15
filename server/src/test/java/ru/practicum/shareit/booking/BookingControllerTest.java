@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import ru.practicum.shareit.booking.dto.BookerDto;
 import ru.practicum.shareit.booking.dto.BookingCreateDto;
@@ -84,6 +85,22 @@ class BookingControllerTest {
     }
 
     @Test
+    void postValidationFailBookerId() throws Exception {
+        var start = LocalDateTime.now().plusHours(1);
+        var end = start.plusDays(1);
+        var request = BookingCreateDto.builder()
+                .itemId(1L)
+                .start(start)
+                .end(end)
+                .build();
+        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.post("/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(request));
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
     void postUserNotFound() throws Exception {
         var start = LocalDateTime.now().plusHours(1);
         var end = start.plusDays(1);
@@ -154,6 +171,23 @@ class BookingControllerTest {
     }
 
     @Test
+    void patchWithoutApprovedFail() throws Exception {
+        var mockRequest = MockMvcRequestBuilders.patch("/bookings/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(CUSTOM_HEADER, 1);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void patchWithoutOwnerFail() throws Exception {
+        var mockRequest = MockMvcRequestBuilders.patch("/bookings/1?approved=false")
+                .contentType(MediaType.APPLICATION_JSON);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
     void getOk() throws Exception {
         var start = LocalDateTime.now().plusHours(1);
         var userId = 1L;
@@ -178,6 +212,14 @@ class BookingControllerTest {
                 .andExpect(jsonPath("$.start", is(response.getStart().format(DateTimeFormatter.ISO_DATE_TIME))))
                 .andExpect(jsonPath("$.end", is(response.getEnd().format(DateTimeFormatter.ISO_DATE_TIME))))
                 .andExpect(jsonPath("$.status", is(response.getStatus().name())));
+    }
+
+    @Test
+    void getWithoutUserFail() throws Exception {
+        var mockRequest = MockMvcRequestBuilders.get("/bookings/1")
+                .contentType(MediaType.APPLICATION_JSON);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
     }
 
     @Test

@@ -88,6 +88,15 @@ class ItemControllerTest {
     }
 
     @Test
+    void getByIdWithoutUserIdFail() throws Exception {
+        var itemId = 1L;
+        var mockRequest = MockMvcRequestBuilders.get("/items/" + itemId)
+                .contentType(MediaType.APPLICATION_JSON);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
     void getAllOk() throws Exception {
         var itemId = 1L;
         var userId = 1L;
@@ -116,6 +125,14 @@ class ItemControllerTest {
     }
 
     @Test
+    void getAllWithoutUserIdFail() throws Exception {
+        var mockRequest = MockMvcRequestBuilders.get("/items")
+                .contentType(MediaType.APPLICATION_JSON);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
     void updateOk() throws Exception {
         var itemId = 1L;
         var userId = 1L;
@@ -132,6 +149,17 @@ class ItemControllerTest {
                 .andExpect(jsonPath("$.name", is(itemDto.getName())))
                 .andExpect(jsonPath("$.description", is(itemDto.getDescription())))
                 .andExpect(jsonPath("$.available", is(itemDto.getAvailable())));
+    }
+
+    @Test
+    void updateWithoutUserIdFail() throws Exception {
+        var itemId = 1L;
+        var itemDto = getItemDto(itemId);
+        var mockRequest = MockMvcRequestBuilders.patch("/items/" + itemId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(itemDto));
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
@@ -173,6 +201,16 @@ class ItemControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id", is(items.get(0).getId()), Long.class))
                 .andExpect(jsonPath("$[1].id", is(items.get(1).getId()), Long.class));
+    }
+
+    @Test
+    void searchWithoutTextFail() throws Exception {
+        var userId = 1L;
+        var mockRequest = MockMvcRequestBuilders.get("/items/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(CUSTOM_HEADER, userId);
+        mockMvc.perform(mockRequest)
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
